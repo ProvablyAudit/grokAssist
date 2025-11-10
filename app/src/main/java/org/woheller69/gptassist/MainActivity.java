@@ -6,13 +6,12 @@ the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
 This program is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
-along with this program.  If not, see <https://www.gnu.org/licenses/>.
+along with this program. If not, see <https://www.gnu.org/licenses/>.
 */
-package org.woheller69.gptassist;
-
+package org.woheller69.grokassist;
 import static android.webkit.WebView.HitTestResult.IMAGE_TYPE;
 import static android.webkit.WebView.HitTestResult.SRC_ANCHOR_TYPE;
 import static android.webkit.WebView.HitTestResult.SRC_IMAGE_ANCHOR_TYPE;
@@ -51,46 +50,35 @@ import android.widget.ImageButton;
 import android.widget.Toast;
 import android.webkit.ValueCallback;
 import android.net.Uri;
-
 import androidx.webkit.URLUtilCompat;
-
 import org.woheller69.freeDroidWarn.FreeDroidWarn;
-
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
-
 public class MainActivity extends Activity {
-
     private WebView chatWebView = null;
     private ImageButton restrictedButton = null;
     private WebSettings chatWebSettings = null;
     private CookieManager chatCookieManager = null;
     private final Context context = this;
     private SwipeTouchListener swipeTouchListener;
-    private String TAG ="gptAssist";
-    private String urlToLoad = "https://chatgpt.com/";
+    private String TAG ="grokAssist";
+    private String urlToLoad = "https://grok.x.ai/";
     private static boolean restricted = true;
-
     private static final ArrayList<String> allowedDomains = new ArrayList<String>();
-
     private ValueCallback<Uri[]> mUploadMessage;
     private final static int FILE_CHOOSER_REQUEST_CODE = 1;
-
     @Override
     protected void onPause() {
         if (chatCookieManager!=null) chatCookieManager.flush();
         swipeTouchListener = null;
         super.onPause();
     }
-
     @Override
     protected void onResume() {
         super.onResume();
-
         if (restricted) restrictedButton.setImageDrawable(getDrawable(R.drawable.restricted));
         else restrictedButton.setImageDrawable(getDrawable(R.drawable.unrestricted));
-
         restrictedButton.setOnClickListener(v -> {
             restricted = !restricted;
             if (restricted) {
@@ -105,7 +93,6 @@ public class MainActivity extends Activity {
             }
             chatWebView.reload();
         });
-
         swipeTouchListener = new SwipeTouchListener(context) {
             public void onSwipeBottom() {
                 if (!chatWebView.canScrollVertically(0)) {
@@ -116,10 +103,8 @@ public class MainActivity extends Activity {
                     restrictedButton.setVisibility(View.GONE);
             }
         };
-
         chatWebView.setOnTouchListener(swipeTouchListener);
     }
-
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         restricted = true;
@@ -130,31 +115,26 @@ public class MainActivity extends Activity {
         requestWindowFeature(Window.FEATURE_NO_TITLE);
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-
         //Create the WebView
         chatWebView = findViewById(R.id.chatWebView);
         registerForContextMenu(chatWebView);
         restrictedButton = findViewById(R.id.restricted);
-
         //Set cookie options
         chatCookieManager = CookieManager.getInstance();
         chatCookieManager.setAcceptCookie(true);
         chatCookieManager.setAcceptThirdPartyCookies(chatWebView, false);
-
         //Restrict what gets loaded
         initURLs();
         registerForContextMenu(chatWebView);
-
         chatWebView.setWebChromeClient(new WebChromeClient(){
             @Override
             public boolean onConsoleMessage(ConsoleMessage consoleMessage) {
-                if (consoleMessage.message().contains("NotAllowedError: Write permission denied.")) {  //this error occurs when user copies to clipboard
+                if (consoleMessage.message().contains("NotAllowedError: Write permission denied.")) { //this error occurs when user copies to clipboard
                     Toast.makeText(context, R.string.error_copy,Toast.LENGTH_LONG).show();
                     return true;
                 }
                 return false;
             }
-
             @Override
             public boolean onShowFileChooser(WebView webView, ValueCallback<Uri[]> filePathCallback, FileChooserParams fileChooserParams) {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
@@ -166,16 +146,13 @@ public class MainActivity extends Activity {
                     mUploadMessage.onReceiveValue(null);
                     mUploadMessage = null;
                 }
-
                 mUploadMessage = filePathCallback;
-
                 Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
                 intent.addCategory(Intent.CATEGORY_OPENABLE);
                 intent.setType("*/*");
                 startActivityForResult(intent, FILE_CHOOSER_REQUEST_CODE);
                 return true;
             }
-
             @Override
             public void onPermissionRequest(final android.webkit.PermissionRequest request) {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
@@ -194,15 +171,12 @@ public class MainActivity extends Activity {
                     request.grant(request.getResources()); // For older Android versions, permissions are granted at install time
                 }
             }
-
-        });  //needed to share link
-
+        }); //needed to share link
         chatWebView.setWebViewClient(new WebViewClient() {
             //Keep these in sync!
             @Override
             public WebResourceResponse shouldInterceptRequest(final WebView view, WebResourceRequest request) {
                 if (!restricted) return null;
-
                 if (request.getUrl().toString().equals("about:blank")) {
                     return null;
                 }
@@ -235,11 +209,9 @@ public class MainActivity extends Activity {
                 }
                 return null;
             }
-
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
                 if (!restricted) return false;
-
                 if (request.getUrl().toString().equals("about:blank")) {
                     return false;
                 }
@@ -264,7 +236,6 @@ public class MainActivity extends Activity {
                 return false;
             }
         });
-
         chatWebView.setDownloadListener((url, userAgent, contentDisposition, mimetype, contentLength) -> {
             Uri source = Uri.parse(url);
             Log.d(TAG,"DownloadManager: " + url);
@@ -275,14 +246,13 @@ public class MainActivity extends Activity {
             request.addRequestHeader("Referer", url);
             request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED); //Notify client once download is completed!
             String filename = URLUtilCompat.getFilenameFromContentDisposition(contentDisposition);
-            if (filename == null) filename = URLUtilCompat.guessFileName(url, contentDisposition, mimetype);  // only if getFilenameFromContentDisposition does not work and returns null
+            if (filename == null) filename = URLUtilCompat.guessFileName(url, contentDisposition, mimetype); // only if getFilenameFromContentDisposition does not work and returns null
             request.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, filename);
             Toast.makeText(this, getString(R.string.download) + "\n" + filename, Toast.LENGTH_SHORT).show();
             DownloadManager dm = (DownloadManager) getSystemService(DOWNLOAD_SERVICE);
             assert dm != null;
             dm.enqueue(request);
         });
-
         //Set more options
         chatWebSettings = chatWebView.getSettings();
         //Enable some WebView features
@@ -297,18 +267,15 @@ public class MainActivity extends Activity {
         chatWebSettings.setDisplayZoomControls(false);
         chatWebSettings.setSaveFormData(false);
         chatWebSettings.setGeolocationEnabled(false);
-
-        //Load ChatGPT
+        //Load Grok
         chatWebView.loadUrl(urlToLoad);
         FreeDroidWarn.showWarningOnUpgrade(this, BuildConfig.VERSION_CODE);
-        if (GithubStar.shouldShowStarDialog(this)) GithubStar.starDialog(this,"https://github.com/woheller69/gptassist");
+        if (GithubStar.shouldShowStarDialog(this)) GithubStar.starDialog(this,"https://github.com/woheller69/grokassist");
     }
-
     @Override
     protected void onDestroy() {
         super.onDestroy();
     }
-
     @Override
     public boolean onKeyDown(int keyCode, KeyEvent event) {
         //Credit (CC BY-SA 3.0): https://stackoverflow.com/a/6077173
@@ -325,9 +292,7 @@ public class MainActivity extends Activity {
         }
         return super.onKeyDown(keyCode, event);
     }
-
-    public void resetChat()  {
-
+    public void resetChat() {
         chatWebView.clearFormData();
         chatWebView.clearHistory();
         chatWebView.clearMatches();
@@ -338,30 +303,24 @@ public class MainActivity extends Activity {
         CookieManager.getInstance().flush();
         WebStorage.getInstance().deleteAllData();
         chatWebView.loadUrl(urlToLoad);
-
-
     }
-
     private static void initURLs() {
-       
         // Allowed Domains for Grok/xAI WebView
-        allowedDomains.add("grok.x.ai");  // Main chat interface
-        allowedDomains.add("grok.com");   // Redirect/alias for main site
-        allowedDomains.add("x.ai");       // xAI homepage and links
-        allowedDomains.add("x.com");      // X/Twitter integration, login, navigation
+        allowedDomains.add("grok.x.ai"); // Main chat interface
+        allowedDomains.add("grok.com"); // Redirect/alias for main site
+        allowedDomains.add("x.ai"); // xAI homepage and links
+        allowedDomains.add("x.com"); // X/Twitter integration, login, navigation
         allowedDomains.add("twitter.com"); // Legacy X domains
-        allowedDomains.add("api.x.ai");   // Grok API endpoints
+        allowedDomains.add("api.x.ai"); // Grok API endpoints
         allowedDomains.add("console.x.ai"); // Developer console
-        allowedDomains.add("docs.x.ai");  // Docs (for links)
-        allowedDomains.add("api.x.com");  // X API for auth/OAuth
+        allowedDomains.add("docs.x.ai"); // Docs (for links)
+        allowedDomains.add("api.x.com"); // X API for auth/OAuth
         allowedDomains.add("abs.twimg.com"); // X CDN for scripts, images, assets
         allowedDomains.add("pbs.twimg.com"); // Profile images and user content
         allowedDomains.add("video.twimg.com"); // Video/media hosting
         allowedDomains.add("accounts.google.com"); // Google OAuth for login
         allowedDomains.add("www.googleapis.com"); // Google auth/services
-
     }
-
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent intent) {
         super.onActivityResult(requestCode, resultCode, intent);
@@ -380,7 +339,6 @@ public class MainActivity extends Activity {
             mUploadMessage = null;
         }
     }
-
     @Override
     public void onCreateContextMenu(ContextMenu menu, View v, ContextMenu.ContextMenuInfo menuInfo) {
         super.onCreateContextMenu(menu, v, menuInfo);
@@ -426,7 +384,7 @@ public class MainActivity extends Activity {
                             break;
                         }
                     }
-                    if (!allowed) {  //Copy URLs that are not allowed to open to clipboard
+                    if (!allowed) { //Copy URLs that are not allowed to open to clipboard
                         ClipboardManager clipboard = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
                         ClipData clip = ClipData.newPlainText(getString(R.string.app_name), url);
                         clipboard.setPrimaryClip(clip);
@@ -436,11 +394,8 @@ public class MainActivity extends Activity {
             }
         }
     }
-
     public String modUserAgent(){
-
         String newPrefix = "Mozilla/5.0 (X11; Linux "+ System.getProperty("os.arch") +")";
-
         String newUserAgent=WebSettings.getDefaultUserAgent(context);
         String prefix = newUserAgent.substring(0, newUserAgent.indexOf(")") + 1);
          try {
@@ -450,8 +405,6 @@ public class MainActivity extends Activity {
             }
          return newUserAgent;
     }
-
-
     @Override
     public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
@@ -471,5 +424,4 @@ public class MainActivity extends Activity {
             }
         }
     }
-
 }
