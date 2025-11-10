@@ -1,19 +1,19 @@
 plugins {
     id 'com.android.application'
 }
-
 android {
     compileSdk 35
-    namespace 'org.woheller69.gptassist'
-    android.buildFeatures.buildConfig true
+    namespace 'org.woheller69.grokassist'
+    buildFeatures {
+        buildConfig true
+    }
     defaultConfig {
-        applicationId "org.woheller69.gptassist"
+        applicationId "org.woheller69.grokassist"
         minSdk 21
         targetSdk 35
         versionCode 230
         versionName "2.30"
     }
-
     buildTypes {
         release {
             minifyEnabled true
@@ -21,15 +21,13 @@ android {
         }
     }
     compileOptions {
-        sourceCompatibility JavaVersion.VERSION_1_8
-        targetCompatibility JavaVersion.VERSION_1_8
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
     }
-    
     lintOptions {
         disable "MissingTranslation" // Translation is crowd-sourced, so this lint warning is useless
     }
 }
-
 dependencies {
     implementation 'androidx.webkit:webkit:1.12.1'
     implementation 'com.github.woheller69:FreeDroidWarn:+'
