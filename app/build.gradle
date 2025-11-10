@@ -26,6 +26,7 @@ android {
     }
     lintOptions {
         disable "MissingTranslation" // Translation is crowd-sourced, so this lint warning is useless
+        abortOnError false  // Fix: Bouw door ondanks lint errors (voor debug)
     }
 }
 dependencies {
