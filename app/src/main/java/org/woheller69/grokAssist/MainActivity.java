@@ -67,8 +67,8 @@ public class MainActivity extends Activity {
     private final Context context = this;
     private SwipeTouchListener swipeTouchListener;
     private String TAG = "grokAssist";
-    private String urlToLoad = "https://grok.x.ai/";
-    private static boolean restricted = false;  // Start unrestricted voor testing; zet op true voor prod
+    private String urlToLoad = "https://grok.x.ai/";  // Probeer alternatief: "https://x.com/grok" als dit faalt
+    private static boolean restricted = false;  // Unrestricted voor testing
     private static final ArrayList<String> allowedDomains = new ArrayList<String>();
     private ValueCallback<Uri[]> mUploadMessage;
     private final static int FILE_CHOOSER_REQUEST_CODE = 1;
@@ -94,7 +94,7 @@ public class MainActivity extends Activity {
             } else {
                 restrictedButton.setImageDrawable(getDrawable(R.drawable.unrestricted));
                 Toast.makeText(context, R.string.all_urls, Toast.LENGTH_SHORT).show();
-                chatWebSettings.setUserAgentString(modUserAgent()); //Needed for login via Google
+                chatWebSettings.setUserAgentString(modUserAgent());
             }
             chatWebView.reload();
         });
@@ -114,7 +114,7 @@ public class MainActivity extends Activity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        restricted = false;  // Force unrestricted bij start voor Grok-testing
+        restricted = false;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             setTheme(android.R.style.Theme_DeviceDefault_DayNight);
         }
@@ -122,25 +122,21 @@ public class MainActivity extends Activity {
         requestWindowFeature(Window.FEATURE_NO_TITLE);
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        //Create the WebView
         chatWebView = findViewById(R.id.chatWebView);
         registerForContextMenu(chatWebView);
         restrictedButton = findViewById(R.id.restricted);
-        //Set cookie options
         chatCookieManager = CookieManager.getInstance();
         chatCookieManager.setAcceptCookie(true);
         chatCookieManager.setAcceptThirdPartyCookies(chatWebView, false);
-        //Restrict what gets loaded
         initURLs();
         registerForContextMenu(chatWebView);
         chatWebView.setWebChromeClient(new WebChromeClient() {
             @Override
             public boolean onConsoleMessage(ConsoleMessage consoleMessage) {
-                // Log alle console messages voor debug (check via adb logcat | grep grokAssist)
                 Log.d(TAG, consoleMessage.message() + " -- From line " +
                         consoleMessage.lineNumber() + " of " +
                         consoleMessage.sourceId());
-                if (consoleMessage.message().contains("NotAllowedError: Write permission denied.")) { //this error occurs when user copies to clipboard
+                if (consoleMessage.message().contains("NotAllowedError: Write permission denied.")) {
                     Toast.makeText(context, R.string.error_copy, Toast.LENGTH_LONG).show();
                     return true;
                 }
@@ -173,20 +169,17 @@ public class MainActivity extends Activity {
                         if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
                             request.grant(request.getResources());
                         } else {
-                            // Request the permission from the user
                             requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO}, 123);
-                            // A more robust solution would involve storing 'request' and calling request.grant() in onRequestPermissionsResult.
                         }
                     } else {
                         request.deny();
                     }
                 } else {
-                    request.grant(request.getResources()); // For older Android versions, permissions are granted at install time
+                    request.grant(request.getResources());
                 }
             }
-        }); //needed to share link
+        });
         chatWebView.setWebViewClient(new WebViewClient() {
-            //Keep these in sync!
             @Override
             public WebResourceResponse shouldInterceptRequest(final WebView view, WebResourceRequest request) {
                 if (!restricted) return null;
@@ -195,7 +188,7 @@ public class MainActivity extends Activity {
                 }
                 if (!request.getUrl().toString().startsWith("https://")) {
                     Log.d(TAG, "[shouldInterceptRequest][NON-HTTPS] Blocked access to " + request.getUrl().toString());
-                    return new WebResourceResponse("text/javascript", "UTF-8", null); //Deny URLs that aren't HTTPS
+                    return new WebResourceResponse("text/javascript", "UTF-8", null);
                 }
                 boolean allowed = false;
                 for (String url : allowedDomains) {
@@ -218,7 +211,7 @@ public class MainActivity extends Activity {
                             throw new RuntimeException(e);
                         }
                     }
-                    return new WebResourceResponse("text/javascript", "UTF-8", null); //Deny URLs not on ALLOWLIST
+                    return new WebResourceResponse("text/javascript", "UTF-8", null);
                 }
                 return null;
             }
@@ -231,7 +224,7 @@ public class MainActivity extends Activity {
                 }
                 if (!request.getUrl().toString().startsWith("https://")) {
                     Log.d(TAG, "[shouldOverrideUrlLoading][NON-HTTPS] Blocked access to " + request.getUrl().toString());
-                    return true; //Deny URLs that aren't HTTPS
+                    return true;
                 }
                 boolean allowed = false;
                 for (String url : allowedDomains) {
@@ -245,9 +238,28 @@ public class MainActivity extends Activity {
                         Toast.makeText(context, context.getString(R.string.error_microsoft_google), Toast.LENGTH_LONG).show();
                         resetChat();
                     }
-                    return true; //Deny URLs not on ALLOWLIST
+                    return true;
                 }
                 return false;
+            }
+
+            @Override
+            public void doUpdateVisitedHistory(WebView view, String url, boolean isReload) {
+                super.doUpdateVisitedHistory(view, url, isReload);
+                Log.d(TAG, "URL changed to: " + url + " (reload: " + isReload + ")");  // Log URL changes voor debug
+            }
+
+            @Override
+            public void onPageFinished(WebView view, String url) {
+                super.onPageFinished(view, url);
+                Log.d(TAG, "Page finished: " + url);
+                // Inject JS om error-reloads te blocken en env te spoof (anti-bot)
+                String jsSpoof = "javascript:(function() {" +
+                        "localStorage.clear();" +  // Clear storage om loops te stoppen
+                        "Object.defineProperty(navigator, 'webdriver', {get: () => undefined});" +  // Spoof no webdriver
+                        "window.onerror = function(msg) { console.log('JS Error blocked: ' + msg); return true; };" +  // Block error popups/reloads
+                        "})()";
+                view.loadUrl(jsSpoof);
             }
         });
         chatWebView.setDownloadListener((url, userAgent, contentDisposition, mimetype, contentLength) -> {
@@ -255,41 +267,36 @@ public class MainActivity extends Activity {
             Log.d(TAG, "DownloadManager: " + url);
             DownloadManager.Request request = new DownloadManager.Request(source);
             request.addRequestHeader("Cookie", CookieManager.getInstance().getCookie(url));
-            request.addRequestHeader("Accept", "text/html, application/xhtml+xml, *" + "/" + "*");
+            request.addRequestHeader("Accept", "text/html, application/xhtml+xml, * /*");
             request.addRequestHeader("Accept-Language", "en-US,en;q=0.7,he;q=0.3");
             request.addRequestHeader("Referer", url);
-            request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED); //Notify client once download is completed!
+            request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
             String filename = URLUtilCompat.getFilenameFromContentDisposition(contentDisposition);
-            if (filename == null) filename = URLUtilCompat.guessFileName(url, contentDisposition, mimetype); // only if getFilenameFromContentDisposition does not work and returns null
+            if (filename == null) filename = URLUtilCompat.guessFileName(url, contentDisposition, mimetype);
             request.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, filename);
             Toast.makeText(this, getString(R.string.download) + "\n" + filename, Toast.LENGTH_SHORT).show();
             DownloadManager dm = (DownloadManager) getSystemService(DOWNLOAD_SERVICE);
             assert dm != null;
             dm.enqueue(request);
         });
-        //Set more options
         chatWebSettings = chatWebView.getSettings();
-        chatWebSettings.setUserAgentString(modUserAgent());  // Zet meteen de Chrome UA
-        //Enable some WebView features
+        chatWebSettings.setUserAgentString(modUserAgent());
         chatWebSettings.setJavaScriptEnabled(true);
         chatWebSettings.setCacheMode(WebSettings.LOAD_DEFAULT);
         chatWebSettings.setDomStorageEnabled(true);
-        chatWebSettings.setDatabaseEnabled(true);  // Voor local storage (auth)
-        //Extra voor Grok/JS-compat
+        chatWebSettings.setDatabaseEnabled(true);
         chatWebSettings.setLoadWithOverviewMode(true);
         chatWebSettings.setUseWideViewPort(true);
         chatWebSettings.setSupportZoom(true);
         chatWebSettings.setBuiltInZoomControls(true);
         chatWebSettings.setDisplayZoomControls(false);
-        chatWebSettings.setMediaPlaybackRequiresUserGesture(false);  // Voor audio/video
-        chatWebSettings.setMixedContentMode(WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE);  // Als mixed content issue
-        chatWebSettings.setCacheMode(WebSettings.LOAD_NO_CACHE);  // Clear cache op start
-        //Disable some WebView features
+        chatWebSettings.setMediaPlaybackRequiresUserGesture(false);
+        chatWebSettings.setMixedContentMode(WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE);
+        chatWebSettings.setCacheMode(WebSettings.LOAD_NO_CACHE);
         chatWebSettings.setAllowContentAccess(false);
         chatWebSettings.setAllowFileAccess(false);
         chatWebSettings.setSaveFormData(false);
         chatWebSettings.setGeolocationEnabled(false);
-        //Load Grok
         chatWebView.loadUrl(urlToLoad);
         FreeDroidWarn.showWarningOnUpgrade(this, BuildConfig.VERSION_CODE);
         if (GithubStar.shouldShowStarDialog(this)) GithubStar.starDialog(this, "https://github.com/woheller69/grokassist");
@@ -302,7 +309,6 @@ public class MainActivity extends Activity {
 
     @Override
     public boolean onKeyDown(int keyCode, KeyEvent event) {
-        //Credit (CC BY-SA 3.0): https://stackoverflow.com/a/6077173
         if (event.getAction() == KeyEvent.ACTION_DOWN) {
             switch (keyCode) {
                 case KeyEvent.KEYCODE_BACK:
@@ -331,23 +337,22 @@ public class MainActivity extends Activity {
     }
 
     private static void initURLs() {
-        // Allowed Domains for Grok/xAI WebView
-        allowedDomains.add("grok.x.ai"); // Main chat interface
-        allowedDomains.add("grok.com"); // Redirect/alias for main site
-        allowedDomains.add("x.ai"); // xAI homepage and links
-        allowedDomains.add("x.com"); // X/Twitter integration, login, navigation
-        allowedDomains.add("twitter.com"); // Legacy X domains
-        allowedDomains.add("api.x.ai"); // Grok API endpoints
-        allowedDomains.add("console.x.ai"); // Developer console
-        allowedDomains.add("docs.x.ai"); // Docs (for links)
-        allowedDomains.add("api.x.com"); // X API for auth/OAuth
-        allowedDomains.add("abs.twimg.com"); // X CDN for scripts, images, assets
-        allowedDomains.add("pbs.twimg.com"); // Profile images and user content
-        allowedDomains.add("video.twimg.com"); // Video/media hosting
-        allowedDomains.add("accounts.google.com"); // Google OAuth for login
-        allowedDomains.add("www.googleapis.com"); // Google auth/services
-        allowedDomains.add("challenges.cloudflare.com"); // Cloudflare voor captchas
-        allowedDomains.add("www.cloudflare.com"); // Cloudflare checks
+        allowedDomains.add("grok.x.ai");
+        allowedDomains.add("grok.com");
+        allowedDomains.add("x.ai");
+        allowedDomains.add("x.com");
+        allowedDomains.add("twitter.com");
+        allowedDomains.add("api.x.ai");
+        allowedDomains.add("console.x.ai");
+        allowedDomains.add("docs.x.ai");
+        allowedDomains.add("api.x.com");
+        allowedDomains.add("abs.twimg.com");
+        allowedDomains.add("pbs.twimg.com");
+        allowedDomains.add("video.twimg.com");
+        allowedDomains.add("accounts.google.com");
+        allowedDomains.add("www.googleapis.com");
+        allowedDomains.add("challenges.cloudflare.com");
+        allowedDomains.add("www.cloudflare.com");
     }
 
     @Override
@@ -380,10 +385,10 @@ public class MainActivity extends Activity {
                 Uri source = Uri.parse(url);
                 DownloadManager.Request request = new DownloadManager.Request(source);
                 request.addRequestHeader("Cookie", CookieManager.getInstance().getCookie(url));
-                request.addRequestHeader("Accept", "text/html, application/xhtml+xml, *" + "/" + "*");
+                request.addRequestHeader("Accept", "text/html, application/xhtml+xml, * /*");
                 request.addRequestHeader("Accept-Language", "en-US,en;q=0.7,he;q=0.3");
                 request.addRequestHeader("Referer", url);
-                request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED); //Notify client once download is completed!
+                request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
                 String filename = URLUtil.guessFileName(url, null, "image/jpeg");
                 request.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, filename);
                 Toast.makeText(this, getString(R.string.download) + "\n" + filename, Toast.LENGTH_SHORT).show();
@@ -392,10 +397,8 @@ public class MainActivity extends Activity {
                 dm.enqueue(request);
             } else if (result.getType() == SRC_IMAGE_ANCHOR_TYPE || result.getType() == SRC_ANCHOR_TYPE) {
                 if (result.getType() == SRC_IMAGE_ANCHOR_TYPE) {
-                    // Create a background thread that has a Looper
                     HandlerThread handlerThread = new HandlerThread("HandlerThread");
                     handlerThread.start();
-                    // Create a handler to execute tasks in the background thread.
                     Handler backgroundHandler = new Handler(handlerThread.getLooper());
                     Message msg = backgroundHandler.obtainMessage();
                     chatWebView.requestFocusNodeHref(msg);
@@ -414,7 +417,7 @@ public class MainActivity extends Activity {
                             break;
                         }
                     }
-                    if (!allowed) { //Copy URLs that are not allowed to open to clipboard
+                    if (!allowed) {
                         ClipboardManager clipboard = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
                         ClipData clip = ClipData.newPlainText(getString(R.string.app_name), url);
                         clipboard.setPrimaryClip(clip);
@@ -426,7 +429,6 @@ public class MainActivity extends Activity {
     }
 
     public String modUserAgent() {
-        // Mimic Chrome on Android (essentieel voor Grok/Cloudflare)
         return "Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Mobile Safari/537.36";
     }
 
@@ -440,10 +442,9 @@ public class MainActivity extends Activity {
                 Toast.makeText(context, "Microphone permission denied.", Toast.LENGTH_SHORT).show();
             }
         }
-        // Handle other permission requests if any (like FILE_CHOOSER_REQUEST_CODE)
-        if (requestCode == 100) { // This is the request code for READ_EXTERNAL_STORAGE from onShowFileChooser
+        if (requestCode == 100) {
             if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                // Permission granted for file access
+                // Permission granted
             } else {
                 Toast.makeText(context, "Storage permission denied.", Toast.LENGTH_SHORT).show();
             }
