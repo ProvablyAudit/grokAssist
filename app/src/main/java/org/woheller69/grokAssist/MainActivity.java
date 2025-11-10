@@ -284,7 +284,6 @@ public class MainActivity extends Activity {
         chatWebSettings.setMediaPlaybackRequiresUserGesture(false);  // Voor audio/video
         chatWebSettings.setMixedContentMode(WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE);  // Als mixed content issue
         chatWebSettings.setCacheMode(WebSettings.LOAD_NO_CACHE);  // Clear cache op start
-        chatWebSettings.setAppCacheEnabled(false);
         //Disable some WebView features
         chatWebSettings.setAllowContentAccess(false);
         chatWebSettings.setAllowFileAccess(false);
