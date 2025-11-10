@@ -30,9 +30,9 @@ Or via this link (with fees)
 | **Whisper** | **Seamless** | **SherpaTTS** |
 | [<img src="https://github.com/woheller69/whisperIME/blob/master/fastlane/metadata/android/en-US/images/icon.png" width="50">](https://f-droid.org/packages/org.woheller69.whisper/) | [<img src="https://github.com/woheller69/seamless/blob/master/fastlane/metadata/android/en-US/images/icon.png" width="50">](https://f-droid.org/packages/org.woheller69.seemless/) | [<img src="https://github.com/woheller69/ttsengine/blob/master/fastlane/metadata/android/en-US/images/icon.png" width="50">](https://f-droid.org/packages/org.woheller69.ttsengine/) |
 
-# gptAssist
+# grokAssist
 
-gptAssist is a simple WebView wrapper for ChatGPT. It blocks all URLs which are not essential.
+grokAssist is a simple WebView wrapper for Grok. It blocks all URLs which are not essential.
 It does not support login via Apple, Microsoft or Google account.
 Please use a web browser for initial sign up.
 
