@@ -343,14 +343,22 @@ public class MainActivity extends Activity {
     }
 
     private static void initURLs() {
-        //Allowed Domains
-        allowedDomains.add("cdn.auth0.com");
-        allowedDomains.add("auth.openai.com");
-        allowedDomains.add("chatgpt.com");
-        allowedDomains.add("openai.com");
-        allowedDomains.add("fileserviceuploadsperm.blob.core.windows.net");
-        allowedDomains.add("cdn.oaistatic.com");
-        allowedDomains.add("oaiusercontent.com");
+       
+        // Allowed Domains for Grok/xAI WebView
+        allowedDomains.add("grok.x.ai");  // Main chat interface
+        allowedDomains.add("grok.com");   // Redirect/alias for main site
+        allowedDomains.add("x.ai");       // xAI homepage and links
+        allowedDomains.add("x.com");      // X/Twitter integration, login, navigation
+        allowedDomains.add("twitter.com"); // Legacy X domains
+        allowedDomains.add("api.x.ai");   // Grok API endpoints
+        allowedDomains.add("console.x.ai"); // Developer console
+        allowedDomains.add("docs.x.ai");  // Docs (for links)
+        allowedDomains.add("api.x.com");  // X API for auth/OAuth
+        allowedDomains.add("abs.twimg.com"); // X CDN for scripts, images, assets
+        allowedDomains.add("pbs.twimg.com"); // Profile images and user content
+        allowedDomains.add("video.twimg.com"); // Video/media hosting
+        allowedDomains.add("accounts.google.com"); // Google OAuth for login
+        allowedDomains.add("www.googleapis.com"); // Google auth/services
 
     }
 
