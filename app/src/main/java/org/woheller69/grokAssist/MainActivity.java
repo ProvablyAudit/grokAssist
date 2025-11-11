@@ -67,7 +67,7 @@ public class MainActivity extends Activity {
     private final Context context = this;
     private SwipeTouchListener swipeTouchListener;
     private String TAG = "grokAssist";
-    private String urlToLoad = "https://grok.x.ai/";  // Probeer alternatief: "https://x.com/grok" als dit faalt
+    private String urlToLoad = "https://grok.com";  // Probeer alternatief: "https://x.com/grok" als dit faalt
     private static boolean restricted = false;  // Unrestricted voor testing
     private static final ArrayList<String> allowedDomains = new ArrayList<String>();
     private ValueCallback<Uri[]> mUploadMessage;
